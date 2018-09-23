@@ -93,7 +93,7 @@
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("const Bike = __webpack_require__(/*! ./models/bikes.js */ \"./src/models/bikes.js\")\n\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('JS loaded')\n\n  const bike = new Bike();\n  bike.getData();\n\n})\n\n\n//# sourceURL=webpack:///./src/app.js?");
+eval("const Bike = __webpack_require__(/*! ./models/bikes.js */ \"./src/models/bikes.js\")\nconst AllBikesView = __webpack_require__(/*! ./views/all_bikes_view.js */ \"./src/views/all_bikes_view.js\")\nconst SelectView = __webpack_require__(/*! ./views/select_view.js */ \"./src/views/select_view.js\");\n\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('JS loaded')\n\n  const selectElement = document.querySelector('#bike-dropdown');\n  const selectView = new SelectView(selectElement);\n  selectView.bindEvents();\n\n  const listContainer = document.querySelector('#list-bikes')\n  const allBikes = new AllBikesView(listContainer);\n  allBikes.bindEvents();\n\n  const bike = new Bike();\n  bike.getData();\n  bike.bindEvents();\n\n})\n\n\n//# sourceURL=webpack:///./src/app.js?");
 
 /***/ }),
 
@@ -126,7 +126,40 @@ eval("const Request = function(url) {\n  this.url = url;\n}\n\n\nRequest.prototy
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("const PubSub = __webpack_require__(/*! ../helpers/pub_sub.js */ \"./src/helpers/pub_sub.js\")\nconst Request = __webpack_require__(/*! ../helpers/request.js */ \"./src/helpers/request.js\")\n\nconst Bike = function(){\nthis.bikes = null;\n}\n\nBike.prototype.getData = function() {\n  const request = new Request('https://api.tfl.gov.uk/bikepoint');\n  request.get((data) => {\n    this.bikes = data;\n    PubSub.publish('Bike:bikes-loaded', this.bikes);\n\n    // this.getAsteroidsNames(this.asteroids);\n    console.log(this.bikes)\n  })\n}\n\n\nmodule.exports = Bike;\n\n\n//# sourceURL=webpack:///./src/models/bikes.js?");
+eval("const PubSub = __webpack_require__(/*! ../helpers/pub_sub.js */ \"./src/helpers/pub_sub.js\")\nconst Request = __webpack_require__(/*! ../helpers/request.js */ \"./src/helpers/request.js\")\n\nconst Bike = function(){\nthis.bikes = null;\nthis.bikesData=null;\n}\n\nBike.prototype.getData = function() {\n  const request = new Request('https://api.tfl.gov.uk/bikepoint');\n  request.get((data) => {\n    this.bikes = data;\n    PubSub.publish('Bike:bikes-loaded', this.bikes);\n    console.log(this.bikes)\n  })\n}\n\nBike.prototype.bindEvents = function(){\n  PubSub.subscribe('SelectView:change', (evt)  => {\n  const bikeIndex = evt.detail;\n  this.publishBikebyLocation(bikeIndex);\n})\n}\n\nBike.prototype.bikesByLocation = function(bikeIndex) {\n  const selectedBike = this.bikes[bikeIndex];\n  return this.bikes.map((selectedBike) => {\n    return selectedBike.commonName;\n  });\n};\n\nBike.prototype.publishBikebyLocation =function(bike){\n  const bikeSelected = this.bikesByLocation(bike);\n  PubSub.publish('Bikes:bike-selected-ready', bikeSelected);\n  console.log(bikeSelected);\n}\n\nmodule.exports = Bike;\n\n\n//# sourceURL=webpack:///./src/models/bikes.js?");
+
+/***/ }),
+
+/***/ "./src/views/all_bikes_view.js":
+/*!*************************************!*\
+  !*** ./src/views/all_bikes_view.js ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+eval("const PubSub = __webpack_require__(/*! ../helpers/pub_sub.js */ \"./src/helpers/pub_sub.js\")\nconst Request = __webpack_require__(/*! ../helpers/request.js */ \"./src/helpers/request.js\")\nconst BikeDetailsView = __webpack_require__(/*! ../views/bikes_details_view.js */ \"./src/views/bikes_details_view.js\")\n\nconst AllBikesView = function(container) {\n  this.container = container;\n  this.bikes = [];\n}\n\nAllBikesView.prototype.bindEvents = function(){\n  PubSub.subscribe('Bike:bikes-loaded', (event) => {\n    this.bikes = event.detail;\n    console.log(this.bikes);\n    this.render();\n  })\n}\n\nAllBikesView.prototype.render = function(){\n  this.bikes.forEach(bike => {\n    const bikeDetailsView = new BikeDetailsView(this.container, bike);\n    bikeDetailsView.render();\n    // console.log(bike)\n  })\n}\n\n\nmodule.exports = AllBikesView;\n// AllBikesView.prototype.render = function(){\n//   this.bikes.forEach(bike => {\n//     bike.commonName;\n//     console.log(bike.commonName);\n//   })\n// }\n\n\n//# sourceURL=webpack:///./src/views/all_bikes_view.js?");
+
+/***/ }),
+
+/***/ "./src/views/bikes_details_view.js":
+/*!*****************************************!*\
+  !*** ./src/views/bikes_details_view.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+eval("const PubSub = __webpack_require__(/*! ../helpers/pub_sub.js */ \"./src/helpers/pub_sub.js\");\n\n\nconst BikeDetailsView = function(bikeListContainer, bike){\n  this.bikeListContainer = bikeListContainer;\n  this.bike = bike;\n}\n\nBikeDetailsView.prototype.render =function(){\n  const bikeDetails = document.createElement('div');\n  const bikeLocation = this.createHeading();\n  bikeDetails.appendChild(bikeLocation);\n  this.bikeListContainer.appendChild(bikeDetails);\n  const bikeUl = this.createBikeUl();\n  this.bikeListContainer.appendChild(bikeUl);\n}\n\nBikeDetailsView.prototype.createHeading = function(){\n  const nameHeading = document.createElement('p');\n  nameHeading.textContent = this.bike.commonName;\n  return nameHeading;\n}\n\nBikeDetailsView.prototype.createBikeUl = function() {\n  const bikeDetailsUl = document.createElement('ul');\n  this.populateUl(bikeDetailsUl);\n  return bikeDetailsUl;\n}\n\nBikeDetailsView.prototype.populateUl = function(ul) {\n  const randomLi = document.createElement('li');\n  randomLi.textContent = this.bike.id;\n  ul.appendChild(randomLi);\n}\n\nmodule.exports = BikeDetailsView;\n\n\n//# sourceURL=webpack:///./src/views/bikes_details_view.js?");
+
+/***/ }),
+
+/***/ "./src/views/select_view.js":
+/*!**********************************!*\
+  !*** ./src/views/select_view.js ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+eval("const PubSub = __webpack_require__(/*! ../helpers/pub_sub */ \"./src/helpers/pub_sub.js\");\n\nconst SelectView = function (selectElement) {\n  this.selectElement = selectElement;\n};\n\nSelectView.prototype.bindEvents = function () {\n  PubSub.subscribe('Bike:bikes-loaded', (evt) => {\n    this.populateSelect(evt.detail);\n  });\n  this.selectElement.addEventListener('change', (evt) => {\n    const selectedIndex = evt.target.value;\n    PubSub.publish('SelectView:change', selectedIndex);\n  });\n};\n\nSelectView.prototype.populateSelect = function (bikes) {\n  bikes.forEach((bike, index) => {\n    const option = this.createBike(bike, index);\n    this.selectElement.appendChild(option);\n  })\n};\n\nSelectView.prototype.createBike = function (bike, index) {\n  const option = document.createElement('option');\n  option.textContent = bike.commonName;\n  option.value = index;\n  return option;\n};\n\nmodule.exports = SelectView;\n\n\n//# sourceURL=webpack:///./src/views/select_view.js?");
 
 /***/ })
 
